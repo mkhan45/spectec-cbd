@@ -5,6 +5,10 @@ open Printf
 open Util.Source
 open Xl
 
+let num_types = ["I32"; "U32"; "F32"; "I64"; "U64"; "F64"]
+
+let cur_nt = ref "none"
+
 (* Helpers *)
 
 let rec alternate xs ys =
@@ -130,6 +134,7 @@ and string_of_expr expr =
     sprintf "%s with %s replaced by %s" (string_of_expr e1) (string_of_paths ps) (string_of_expr e2)
   | StrE r -> string_of_record_expr r
   | ChooseE e -> (string_of_expr e)
+  | VarE "numtype_0" -> !cur_nt
   | VarE id -> id
   | SubE (id, _) -> id
   | IterE (e, ie) -> string_of_expr e ^ string_of_iterexp ie
@@ -200,6 +205,7 @@ and read_of_arg arg =
   | ExpA {it = (VarE "l"); _} -> "imm_readULEB32()"
   | ExpA {it = (VarE "x"); _} -> "imm_readULEB32()"
   | ExpA {it = (VarE "bt"); _} -> "imm_readBlockType()"
+  | ExpA {it = (VarE "loadop"); _} -> "imm_readLoadOp()"
   | ExpA e -> "arg " ^ string_of_expr e
   | TypA typ -> "`" ^ string_of_typ typ
   | DefA id -> "$" ^ id
@@ -362,7 +368,32 @@ let include_instr instr = match instr.it with
 | _ -> true
 let string_of_instrs instrs = List.filter include_instr instrs |> string_of_instrs' 0
 
+let rec has_numtype params = match params with
+| [] -> false
+| (ExpA { it = VarE "nt"; _ })::_ -> true
+| _::xs -> has_numtype xs
+
+let rec remove_numtype (params : arg list) = match params with
+| [] -> params
+| {it = (ExpA { it = VarE "nt"; _ }); _}::xs -> xs
+| e::xs -> e :: remove_numtype xs
+
+let rule_to_instr instr = List.nth (String.split_on_char '/' instr) 1 |> String.capitalize_ascii
+
 let string_of_algorithm algo = match algo.it with
+  | RuleA (_a, anchor, params, instrs) when has_numtype (params |> List.map (fun x -> x.it)) ->
+    let params = remove_numtype params in
+    List.map (fun nt ->
+        let instantiated_rulename = nt ^ "_" ^ (anchor |> rule_to_instr) in
+        cur_nt := nt;
+        let res = instantiated_rulename ^ "\n"
+        ^ List.fold_left
+            (fun acc p -> acc ^ "     def " ^ string_of_arg p ^ " = " ^ read_of_arg p ^ "\n")
+            "" params
+        ^ string_of_instrs instrs ^ "\n"
+        in
+        cur_nt := "none";
+        res) num_types |> String.concat "\n"
   | RuleA (_a, anchor, params, instrs) ->
     anchor ^ "\n"
     ^ List.fold_left
