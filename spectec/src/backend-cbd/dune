@@ -1,0 +1,8 @@
+(library
+  (name backend_cbd)
+  (libraries util el il il2al backend_latex backend_interpreter backend_prose)
+  (modules
+    cbd
+    print
+    gen)
+)

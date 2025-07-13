@@ -11,6 +11,7 @@ type target =
  | Ast
  | Latex
  | Prose of bool
+ | CBD
  | Splice of Backend_splice.Config.t
  | Interpreter of string list
 
@@ -136,6 +137,7 @@ let argspec = Arg.align (
   "--splice-sphinx", Arg.Unit (fun () -> target := Splice Backend_splice.Config.sphinx),
     " Splice Sphinx";
   "--prose", Arg.Unit (fun () -> target := Prose true), " Generate prose";
+  "--cbd", Arg.Unit (fun () -> target := CBD), " Generate cbd";
   "--prose-rst", Arg.Unit (fun () -> target := Prose false), " Generate prose";
   "--interpreter", Arg.Rest_all (fun args -> target := Interpreter args),
     " Generate interpreter";
@@ -288,6 +290,12 @@ let () =
             Backend_prose.Gen.gen_file config_latex config_prose odst el il al
       | _ -> cmd_error "too many output file names"
       )
+
+    | CBD ->
+      log "CBD Generation...";
+      Backend_cbd.Gen.gen_cbd el il al
+      |> Backend_cbd.Print.string_of_cbd
+      |> print_endline
 
     | Splice config ->
       if !in_place then

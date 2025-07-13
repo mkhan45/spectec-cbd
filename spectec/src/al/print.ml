@@ -102,21 +102,21 @@ and string_of_iters iters = List.map string_of_iter iters |> List.fold_left (^) 
 
 (* Expressions *)
 
-and string_of_record_expr r =
-  Record.fold
-    (fun a v acc -> acc ^ string_of_atom a ^ ": " ^ string_of_expr v ^ "; ")
-    r "{ "
-  ^ "}"
+(* and string_of_record_expr r = *)
+(*   Record.fold *)
+(*     (fun a v acc -> acc ^ string_of_atom a ^ ": " ^ string_of_expr v ^ "; ") *)
+(*     r "{ " *)
+(*   ^ "}" *)
 
 and string_of_expr expr =
   match expr.it with
-  | NumE n -> Num.to_string n
-  | BoolE b -> string_of_bool b
+  | NumE _ -> "NumE"
+  | BoolE _ -> "BoolE"
   | CvtE (e, _, t) -> sprintf "$%s$(%s)" (Il.Print.string_of_numtyp t) (string_of_expr e)
   | UnE (op, e) -> sprintf "%s(%s)" (string_of_unop op) (string_of_expr e)
   | BinE (op, e1, e2) ->
     sprintf "(%s %s %s)" (string_of_expr e1) (string_of_binop op) (string_of_expr e2)
-  | TupE el -> "(" ^ string_of_exprs ", " el ^ ")"
+  | TupE _l -> "TupE"
   | CallE (id, al) -> sprintf "$%s(%s)" id (string_of_args ", " al)
   | InvCallE (id, nl, al) ->
     let id' =
@@ -135,12 +135,12 @@ and string_of_expr expr =
     sprintf "%s :: %s" (string_of_expr e1) (string_of_expr e2)
   | MemE (e1, e2) ->
     sprintf "%s is contained in %s" (string_of_expr e1) (string_of_expr e2)
-  | LenE e -> sprintf "|%s|" (string_of_expr e)
+  | LenE _ -> "LenE"
   | GetCurStateE -> "current_state()"
   | GetCurContextE None -> "current_context()"
   | GetCurContextE (Some a) -> sprintf "current_context(%s)" (string_of_atom a)
-  | ListE el -> "[" ^ string_of_exprs ", " el ^ "]"
-  | LiftE e -> "lift(" ^ string_of_expr e ^ ")"
+  | ListE _l -> "ListE"
+  | LiftE _ -> "LiftE"
   | AccE (e, p) -> sprintf "%s%s" (string_of_expr e) (string_of_path p)
   | ExtE (e1, ps, e2, dir) -> (
     match dir with
@@ -148,9 +148,9 @@ and string_of_expr expr =
     | Back -> sprintf "append(%s%s, %s)" (string_of_expr e1) (string_of_paths ps) (string_of_expr e2))
   | UpdE (e1, ps, e2) ->
     sprintf "update(%s%s, %s)" (string_of_expr e1) (string_of_paths ps) (string_of_expr e2)
-  | StrE r -> string_of_record_expr r
-  | ChooseE e -> sprintf "choose(%s)" (string_of_expr e)
-  | VarE id -> id
+  | StrE _ -> "StrE"
+  | ChooseE _ -> "ChooseE"
+  | VarE _d -> "VarE"
   | SubE (id, _) -> id
   | IterE (e, ie) -> string_of_expr e ^ string_of_iterexp ie
   | CaseE ([{ it=Atom.Atom ("CONST" | "VCONST"); _ }]::_tl, hd::tl) ->
