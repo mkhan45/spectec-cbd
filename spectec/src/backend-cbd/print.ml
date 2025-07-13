@@ -100,6 +100,14 @@ and string_of_expr expr =
   | BinE (op, e1, e2) ->
     sprintf "(%s %s %s)" (string_of_expr e1) (string_of_binop op) (string_of_expr e2)
   | TupE el -> "(" ^ string_of_exprs ", " el ^ ")"
+  | CallE ("with_local", al) ->
+    sprintf "setLocal(%s)" (string_of_args ", " al)
+  | CallE ("local", al) ->
+    sprintf "getLocal(%s)" (string_of_args ", " al)
+  | CallE ("with_global", al) ->
+    sprintf "setGlobal(%s)" (string_of_args ", " al)
+  | CallE ("global", al) ->
+    sprintf "getGlobal(%s)" (string_of_args ", " al)
   | CallE (id, al) ->
     sprintf "$%s(%s)" id (string_of_args ", " al)
   | InvCallE (id, nl, al) ->
@@ -317,6 +325,8 @@ and string_of_instr' depth instr =
       (repeat indent depth ^ or_index)
       (string_of_instrs' (depth + 1) il2)
   | AssertI e -> sprintf "%s Assert: Due to validation, %s." (make_index depth) (string_of_expr e)
+  | PushI ({it = CaseE ([{ it=Atom.Atom ("CONST" | "VCONST"); _ }]::_tl, hd::tl); _}) ->
+    sprintf "%s push_%s(%s)\n%s" (make_index depth) (string_of_expr hd) (string_of_exprs " " tl) (make_index depth)
   | PushI e ->
     sprintf "%s push_Value(%s)\n%s" (make_index depth) (string_of_expr e) (make_index depth)
   | PopAllI e ->
@@ -329,7 +339,8 @@ and string_of_instr' depth instr =
   | FailI -> sprintf "%s doFail()\n%s" (make_index depth) (make_index (depth-1))
   | ThrowI e ->
     sprintf "%s Throw the exception %s as a result." (make_index depth) (string_of_expr e)
-  | NopI -> sprintf "%s Do nothing." (make_index depth)
+  (* | NopI -> sprintf "%s Do nothing." (make_index depth) *)
+  | NopI -> ""
   | ReturnI None -> sprintf "%s Return." (make_index depth)
   | ReturnI (Some e) -> sprintf "%s Return %s." (make_index depth) (string_of_expr e)
   | EnterI (e1, e2, il) ->
@@ -340,7 +351,8 @@ and string_of_instr' depth instr =
   | ExecuteSeqI e ->
     sprintf "%s Execute the sequence %s." (make_index depth) (string_of_expr e)
   | PerformI (id, al) ->
-    sprintf "%s Perform %s." (make_index depth) (string_of_expr (CallE (id, al) $$ instr.at % (Il.Ast.VarT ("TODO" $ no_region, []) $ no_region)))
+    sprintf "%s %s" (make_index depth) (string_of_expr (CallE (id, al) $$ instr.at % (Il.Ast.VarT ("TODO" $ no_region, []) $ no_region)))
+    (* sprintf "%s Perform %s." (make_index depth) (string_of_expr (CallE (id, al) $$ instr.at % (Il.Ast.VarT ("TODO" $ no_region, []) $ no_region))) *)
   | ExitI a ->
     sprintf "%s Exit from %s." (make_index depth) (string_of_atom a)
   | ReplaceI (e1, p, e2) ->
@@ -378,7 +390,10 @@ let rec remove_numtype (params : arg list) = match params with
 | {it = (ExpA { it = VarE "nt"; _ }); _}::xs -> xs
 | e::xs -> e :: remove_numtype xs
 
-let rule_to_instr instr = List.nth (String.split_on_char '/' instr) 1 |> String.capitalize_ascii
+let rule_to_instr instr = match (String.split_on_char '/' instr) with
+| [_; r] -> (String.map Char.uppercase_ascii r)  ^ "()"
+| [r] -> (String.map Char.uppercase_ascii r) ^ "()"
+| _ -> (String.map Char.uppercase_ascii instr) ^ "()"
 
 let string_of_algorithm algo = match algo.it with
   | RuleA (_a, anchor, params, instrs) when has_numtype (params |> List.map (fun x -> x.it)) ->
@@ -386,20 +401,20 @@ let string_of_algorithm algo = match algo.it with
     List.map (fun nt ->
         let instantiated_rulename = nt ^ "_" ^ (anchor |> rule_to_instr) in
         cur_nt := nt;
-        let res = instantiated_rulename ^ "\n"
+        let res = "def " ^ instantiated_rulename ^ " {\n"
         ^ List.fold_left
             (fun acc p -> acc ^ "     def " ^ string_of_arg p ^ " = " ^ read_of_arg p ^ "\n")
             "" params
-        ^ string_of_instrs instrs ^ "\n"
+        ^ string_of_instrs instrs ^ "\n}\n"
         in
         cur_nt := "none";
         res) num_types |> String.concat "\n"
   | RuleA (_a, anchor, params, instrs) ->
-    anchor ^ "\n"
+    "def " ^ (rule_to_instr anchor) ^ " {\n"
     ^ List.fold_left
         (fun acc p -> acc ^ "     def " ^ string_of_arg p ^ " = " ^ read_of_arg p ^ "\n")
         "" params
-    ^ string_of_instrs instrs ^ "\n"
+    ^ string_of_instrs instrs ^ "\n}\n"
   | _ -> ""
   (* | FuncA (id, params, instrs) -> *)
   (*   id *)

@@ -1,0 +1,2811 @@
+def BR-LABEL-*() {
+     def l = imm_readULEB32()
+
+     def (LABEL_ n { instr'* }) = the topmost LABEL_.
+     if ((l = 0)) {
+           Assert: Due to validation, there are at least n values on the top of the stack.
+           def val^n = pop_Value()
+           Pop all values val'* from the top of the stack.
+           def (LABEL_ _ { _ }) = pop_Value()
+           push_Value(val^n)
+        
+           Execute the sequence $__prose:_jump_to_the_cont(instr'*).}
+     else {
+           Pop all values val* from the top of the stack.
+           def (LABEL_ _ { _ }) = pop_Value()
+           push_Value(val*)
+        
+           Execute the instruction (BR (l - 1)).
+        
+    }
+}
+
+def RETURN_CALL_REF-FRAME-*() {
+     def yy = arg yy
+
+     def z = the current state.
+     def val'' = pop_Value()
+     if (val'' is some REF.NULL) {
+           doTrap()
+    }
+     def (REF.FUNC_ADDR a) = val''.
+     def (FUNC t_1^n -> t_2^m) = $Expand($funcinst(z)[a].TYPE).
+     def val^n = pop_Value()
+     Pop all values val'* from the top of the stack.
+     def (FRAME_ _ { _ }) = pop_Value()
+     push_Value(val^n)
+    
+     push_Value((REF.FUNC_ADDR a))
+    
+     Execute the instruction (CALL_REF yy).
+    
+}
+
+def THROW_REF-INSTRS-*() {
+
+     def (REF.EXN_ADDR a) = pop_Value()
+     Pop all values val* from the top of the stack.
+     push_Value((REF.EXN_ADDR a))
+    
+     Execute the instruction THROW_REF.
+    
+}
+
+def THROW_REF-HANDLER-*() {
+
+     def z = the current state.
+     def (REF.EXN_ADDR a) = pop_Value()
+     def (HANDLER_ n { catch''* }) = the topmost HANDLER_.
+     if ((catch''* = [])) {
+           def (HANDLER_ _ { _ }) = pop_Value()
+           push_Value((REF.EXN_ADDR a))
+        
+           Execute the instruction THROW_REF.
+        }
+     else {
+           def val* = $exninst(z)[a].FIELDS.
+           def [catch_0] :: catch'* = catch''*.
+           if (catch_0 is some CATCH) {
+                 def (CATCH x l) = catch_0.
+                 if (($exninst(z)[a].TAG = $tagaddr(z)[x])) {
+                       def (HANDLER_ _ { _ }) = pop_Value()
+                       push_Value(val*)
+                
+                       Execute the instruction (BR l).
+                }
+                 else {
+                       def [catch] :: catch'* = catch''*.
+                       def (HANDLER_ _ { _ }) = pop_Value()
+                       push_Value((HANDLER_ n { catch'* }))
+                
+                       push_Value((REF.EXN_ADDR a))
+                
+                       Execute the instruction THROW_REF.
+                
+            }}
+           else if catch_0 is some CATCH_REF {
+                 def (CATCH_REF x l) = catch_0.
+                 if (($exninst(z)[a].TAG =/= $tagaddr(z)[x])) {
+                       def [catch] :: catch'* = catch''*.
+                       def (HANDLER_ _ { _ }) = pop_Value()
+                       push_Value((HANDLER_ n { catch'* }))
+                
+                       push_Value((REF.EXN_ADDR a))
+                
+                       Execute the instruction THROW_REF.
+                }
+                 else {
+                       def (HANDLER_ _ { _ }) = pop_Value()
+                       push_Value(val*)
+                
+                       push_Value((REF.EXN_ADDR a))
+                
+                       Execute the instruction (BR l).
+                
+            }
+        }
+           else if catch_0 is some CATCH_ALL {
+                 def (CATCH_ALL l) = catch_0.
+                 def (HANDLER_ _ { _ }) = pop_Value()
+                 Execute the instruction (BR l).
+            
+        }
+           else if catch_0 is not CATCH_ALL_REF {
+                 def [catch] :: catch'* = catch''*.
+                 def (HANDLER_ _ { _ }) = pop_Value()
+                 push_Value((HANDLER_ n { catch'* }))
+            
+                 push_Value((REF.EXN_ADDR a))
+            
+                 Execute the instruction THROW_REF.
+            
+        }
+           else {
+                 def (CATCH_ALL_REF l) = catch_0.
+                 def (HANDLER_ _ { _ }) = pop_Value()
+                 push_Value((REF.EXN_ADDR a))
+            
+                 Execute the instruction (BR l).
+            
+        }
+    }
+}
+
+def TABLE.COPY-OOB-*() {
+     def x_1 = arg x_1
+     def x_2 = arg x_2
+
+     def z = the current state.
+     def n = pop_at()
+     def i_2 = pop_at_2()
+     def i_1 = pop_at_1()
+     if (((i_1 + n) > |$table(z, x_1).REFS|)) {
+           doTrap()
+    }
+     if (((i_2 + n) > |$table(z, x_2).REFS|)) {
+           doTrap()
+    }
+}
+
+def TABLE.INIT-OOB-*() {
+     def x = imm_readULEB32()
+     def y = arg y
+
+     def z = the current state.
+     def n = pop_I32()
+     def j = pop_I32()
+     def i = pop_at()
+     if (((i + n) > |$table(z, x).REFS|)) {
+           doTrap()
+    }
+     if (((j + n) > |$elem(z, y).REFS|)) {
+           doTrap()
+    }
+}
+
+def I32_LOAD-NUM-*() {
+     def ?() = arg ?()
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def c = $nbytes__1^-1(nt, $mem(z, x).BYTES[(i + ao.OFFSET) : ($size(nt) / 8)]).
+     push_nt(c)
+    
+}
+
+def U32_LOAD-NUM-*() {
+     def ?() = arg ?()
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def c = $nbytes__1^-1(nt, $mem(z, x).BYTES[(i + ao.OFFSET) : ($size(nt) / 8)]).
+     push_nt(c)
+    
+}
+
+def F32_LOAD-NUM-*() {
+     def ?() = arg ?()
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def c = $nbytes__1^-1(nt, $mem(z, x).BYTES[(i + ao.OFFSET) : ($size(nt) / 8)]).
+     push_nt(c)
+    
+}
+
+def I64_LOAD-NUM-*() {
+     def ?() = arg ?()
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def c = $nbytes__1^-1(nt, $mem(z, x).BYTES[(i + ao.OFFSET) : ($size(nt) / 8)]).
+     push_nt(c)
+    
+}
+
+def U64_LOAD-NUM-*() {
+     def ?() = arg ?()
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def c = $nbytes__1^-1(nt, $mem(z, x).BYTES[(i + ao.OFFSET) : ($size(nt) / 8)]).
+     push_nt(c)
+    
+}
+
+def F64_LOAD-NUM-*() {
+     def ?() = arg ?()
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def c = $nbytes__1^-1(nt, $mem(z, x).BYTES[(i + ao.OFFSET) : ($size(nt) / 8)]).
+     push_nt(c)
+    
+}
+
+def LOAD-PACK-*() {
+     def Inn = arg Inn
+     def ?(n _ sx) = arg ?(n _ sx)
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + (n / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def c = $ibytes__1^-1(n, $mem(z, x).BYTES[(i + ao.OFFSET) : (n / 8)]).
+     push_Inn($extend__(n, $size(Inn), sx, c))
+    
+}
+
+def VLOAD-PACK-*() {
+     def V128 = arg V128
+     def ?((SHAPE M X K _ sx)) = arg ?((SHAPE M X K _ sx))
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + ((M * K) / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def j^K = $ibytes__1^-1(M, $mem(z, x).BYTES[((i + ao.OFFSET) + ((k * M) / 8)) : (M / 8)])^(k<K).
+     def Jnn = $lsizenn^-1((M * 2)).
+     def c = $invlanes_(Jnn X K, $extend__(M, $lsizenn(Jnn), sx, j)^K).
+     push_V128(c)
+    
+}
+
+def VLOAD-SPLAT-*() {
+     def V128 = arg V128
+     def ?((SPLAT N)) = arg ?((SPLAT N))
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + (N / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def M = (128 / N).
+     def Jnn = $lsize^-1(N).
+     def j = $ibytes__1^-1(N, $mem(z, x).BYTES[(i + ao.OFFSET) : (N / 8)]).
+     def c = $invlanes_(Jnn X M, j^M).
+     push_V128(c)
+    
+}
+
+def VLOAD-ZERO-*() {
+     def V128 = arg V128
+     def ?((ZERO N)) = arg ?((ZERO N))
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + (N / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def j = $ibytes__1^-1(N, $mem(z, x).BYTES[(i + ao.OFFSET) : (N / 8)]).
+     def c = $extend__(N, 128, U, j).
+     push_V128(c)
+    
+}
+
+def MEMORY.COPY-OOB-*() {
+     def x_1 = arg x_1
+     def x_2 = arg x_2
+
+     def z = the current state.
+     def n = pop_at()
+     def i_2 = pop_at_2()
+     def i_1 = pop_at_1()
+     if (((i_1 + n) > |$mem(z, x_1).BYTES|)) {
+           doTrap()
+    }
+     if (((i_2 + n) > |$mem(z, x_2).BYTES|)) {
+           doTrap()
+    }
+}
+
+def MEMORY.INIT-OOB-*() {
+     def x = imm_readULEB32()
+     def y = arg y
+
+     def z = the current state.
+     def n = pop_I32()
+     def j = pop_I32()
+     def i = pop_at()
+     if (((i + n) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     if (((j + n) > |$data(z, y).BYTES|)) {
+           doTrap()
+    }
+}
+
+def I32_STORE-NUM-*() {
+     def ?() = arg ?()
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def c = pop_I32()
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def b* = $nbytes_(nt, c).
+     $with_mem(z, x, (i + ao.OFFSET), ($size(nt) / 8), b*)
+}
+
+def U32_STORE-NUM-*() {
+     def ?() = arg ?()
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def c = pop_U32()
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def b* = $nbytes_(nt, c).
+     $with_mem(z, x, (i + ao.OFFSET), ($size(nt) / 8), b*)
+}
+
+def F32_STORE-NUM-*() {
+     def ?() = arg ?()
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def c = pop_F32()
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def b* = $nbytes_(nt, c).
+     $with_mem(z, x, (i + ao.OFFSET), ($size(nt) / 8), b*)
+}
+
+def I64_STORE-NUM-*() {
+     def ?() = arg ?()
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def c = pop_I64()
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def b* = $nbytes_(nt, c).
+     $with_mem(z, x, (i + ao.OFFSET), ($size(nt) / 8), b*)
+}
+
+def U64_STORE-NUM-*() {
+     def ?() = arg ?()
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def c = pop_U64()
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def b* = $nbytes_(nt, c).
+     $with_mem(z, x, (i + ao.OFFSET), ($size(nt) / 8), b*)
+}
+
+def F64_STORE-NUM-*() {
+     def ?() = arg ?()
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def c = pop_F64()
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def b* = $nbytes_(nt, c).
+     $with_mem(z, x, (i + ao.OFFSET), ($size(nt) / 8), b*)
+}
+
+def STORE-PACK-*() {
+     def Inn = arg Inn
+     def ?(n) = arg ?(n)
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def c = pop_none()
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + (n / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def b* = $ibytes_(n, $wrap__($size(Inn), n, c)).
+     $with_mem(z, x, (i + ao.OFFSET), (n / 8), b*)
+}
+
+def UNREACHABLE() {
+
+     doTrap()
+
+}
+
+def NOP() {
+
+
+}
+
+def DROP() {
+
+     def val = pop_Value()
+}
+
+def SELECT() {
+     def t*? = arg t*?
+
+     def c = pop_I32()
+     def val_2 = pop_Value()
+     def val_1 = pop_Value()
+     if ((c =/= 0)) {
+           push_Value(val_1)
+        }
+     else {
+           push_Value(val_2)
+        
+    }
+}
+
+def IF() {
+     def bt = imm_readBlockType()
+     def instr_1* = arg instr_1*
+     def instr_2* = arg instr_2*
+
+     def c = pop_I32()
+     if ((c =/= 0)) {
+           Execute the instruction (BLOCK bt instr_1*).
+        }
+     else {
+           Execute the instruction (BLOCK bt instr_2*).
+        
+    }
+}
+
+def LABEL() {
+
+     Pop all values val* from the top of the stack.
+     def (LABEL_ _ { _ }) = pop_Value()
+     push_Value(val*)
+    
+}
+
+def BR() {
+     def l = imm_readULEB32()
+
+     if (the first non-value entry of the stack is a LABEL_) {
+           def (LABEL_ n { instr'* }) = the topmost LABEL_.
+           if ((l = 0)) {
+                 Assert: Due to validation, there are at least n values on the top of the stack.
+                 def val^n = pop_Value()
+                 Pop all values val'* from the top of the stack.
+                 def (LABEL_ _ { _ }) = pop_Value()
+                 push_Value(val^n)
+            
+                 Execute the sequence $__prose:_jump_to_the_cont(instr'*).}
+           else {
+                 Pop all values val* from the top of the stack.
+                 def (LABEL_ _ { _ }) = pop_Value()
+                 push_Value(val*)
+            
+                 Execute the instruction (BR (l - 1)).
+            
+        }}
+     else {
+           Assert: Due to validation, the first non-value entry of the stack is a HANDLER_.
+           Pop all values val* from the top of the stack.
+           def (HANDLER_ _ { _ }) = pop_Value()
+           push_Value(val*)
+        
+           Execute the instruction (BR l).
+        
+    }
+}
+
+def BR_IF() {
+     def l = imm_readULEB32()
+
+     def c = pop_I32()
+     if ((c =/= 0)) {
+           Execute the instruction (BR l).
+        }
+     else {
+  
+    }
+}
+
+def BR_TABLE() {
+     def l* = arg l*
+     def l' = arg l'
+
+     def i = pop_I32()
+     if ((i < |l*|)) {
+           Execute the instruction (BR l*[i]).
+        }
+     else {
+           Execute the instruction (BR l').
+        
+    }
+}
+
+def BR_ON_NULL() {
+     def l = imm_readULEB32()
+
+     def val = pop_Value()
+     if (val is some REF.NULL) {
+           Execute the instruction (BR l).
+        }
+     else {
+           push_Value(val)
+        
+    }
+}
+
+def BR_ON_NON_NULL() {
+     def l = imm_readULEB32()
+
+     def val = pop_Value()
+     if (val is some REF.NULL) {
+  }
+     else {
+           push_Value(val)
+        
+           Execute the instruction (BR l).
+        
+    }
+}
+
+def CALL_INDIRECT() {
+     def x = imm_readULEB32()
+     def yy = arg yy
+
+     Execute the instruction (TABLE.GET x).
+    
+     Execute the instruction (REF.CAST (REF ?(NULL) yy)).
+    
+     Execute the instruction (CALL_REF yy).
+    
+}
+
+def RETURN_CALL_INDIRECT() {
+     def x = imm_readULEB32()
+     def yy = arg yy
+
+     Execute the instruction (TABLE.GET x).
+    
+     Execute the instruction (REF.CAST (REF ?(NULL) yy)).
+    
+     Execute the instruction (RETURN_CALL_REF yy).
+    
+}
+
+def FRAME() {
+
+     def (FRAME_ n { f }) = the topmost FRAME_.
+     def val^n = pop_Value()
+     def (FRAME_ _ { _ }) = pop_Value()
+     push_Value(val^n)
+    
+}
+
+def RETURN() {
+
+     if (the first non-value entry of the stack is a FRAME_) {
+           def (FRAME_ n { f }) = the topmost FRAME_.
+           Assert: Due to validation, there are at least n values on the top of the stack.
+           def val^n = pop_Value()
+           Pop all values val'* from the top of the stack.
+           def (FRAME_ _ { _ }) = pop_Value()
+           push_Value(val^n)
+        }
+     else if the first non-value entry of the stack is a LABEL_ {
+           Pop all values val* from the top of the stack.
+           def (LABEL_ _ { _ }) = pop_Value()
+           push_Value(val*)
+        
+           Execute the instruction RETURN.
+        
+    }
+     else {
+           Assert: Due to validation, the first non-value entry of the stack is a HANDLER_.
+           Pop all values val* from the top of the stack.
+           def (HANDLER_ _ { _ }) = pop_Value()
+           push_Value(val*)
+        
+           Execute the instruction RETURN.
+        
+    }
+}
+
+def HANDLER() {
+
+     Pop all values val* from the top of the stack.
+     def (HANDLER_ _ { _ }) = pop_Value()
+     push_Value(val*)
+    
+}
+
+def I32_UNOP() {
+     def unop = arg unop
+
+     def c_1 = pop_I32()
+     def c = $unop_(nt, unop, c_1).
+     push_nt(c)
+    
+     if (($unop_(nt, unop, c_1) = [])) {
+           doTrap()
+    }
+}
+
+def U32_UNOP() {
+     def unop = arg unop
+
+     def c_1 = pop_U32()
+     def c = $unop_(nt, unop, c_1).
+     push_nt(c)
+    
+     if (($unop_(nt, unop, c_1) = [])) {
+           doTrap()
+    }
+}
+
+def F32_UNOP() {
+     def unop = arg unop
+
+     def c_1 = pop_F32()
+     def c = $unop_(nt, unop, c_1).
+     push_nt(c)
+    
+     if (($unop_(nt, unop, c_1) = [])) {
+           doTrap()
+    }
+}
+
+def I64_UNOP() {
+     def unop = arg unop
+
+     def c_1 = pop_I64()
+     def c = $unop_(nt, unop, c_1).
+     push_nt(c)
+    
+     if (($unop_(nt, unop, c_1) = [])) {
+           doTrap()
+    }
+}
+
+def U64_UNOP() {
+     def unop = arg unop
+
+     def c_1 = pop_U64()
+     def c = $unop_(nt, unop, c_1).
+     push_nt(c)
+    
+     if (($unop_(nt, unop, c_1) = [])) {
+           doTrap()
+    }
+}
+
+def F64_UNOP() {
+     def unop = arg unop
+
+     def c_1 = pop_F64()
+     def c = $unop_(nt, unop, c_1).
+     push_nt(c)
+    
+     if (($unop_(nt, unop, c_1) = [])) {
+           doTrap()
+    }
+}
+
+def I32_BINOP() {
+     def binop = arg binop
+
+     def c_2 = pop_I32()
+     def c_1 = pop_I32()
+     def c = $binop_(nt, binop, c_1, c_2).
+     push_nt(c)
+    
+     if (($binop_(nt, binop, c_1, c_2) = [])) {
+           doTrap()
+    }
+}
+
+def U32_BINOP() {
+     def binop = arg binop
+
+     def c_2 = pop_U32()
+     def c_1 = pop_U32()
+     def c = $binop_(nt, binop, c_1, c_2).
+     push_nt(c)
+    
+     if (($binop_(nt, binop, c_1, c_2) = [])) {
+           doTrap()
+    }
+}
+
+def F32_BINOP() {
+     def binop = arg binop
+
+     def c_2 = pop_F32()
+     def c_1 = pop_F32()
+     def c = $binop_(nt, binop, c_1, c_2).
+     push_nt(c)
+    
+     if (($binop_(nt, binop, c_1, c_2) = [])) {
+           doTrap()
+    }
+}
+
+def I64_BINOP() {
+     def binop = arg binop
+
+     def c_2 = pop_I64()
+     def c_1 = pop_I64()
+     def c = $binop_(nt, binop, c_1, c_2).
+     push_nt(c)
+    
+     if (($binop_(nt, binop, c_1, c_2) = [])) {
+           doTrap()
+    }
+}
+
+def U64_BINOP() {
+     def binop = arg binop
+
+     def c_2 = pop_U64()
+     def c_1 = pop_U64()
+     def c = $binop_(nt, binop, c_1, c_2).
+     push_nt(c)
+    
+     if (($binop_(nt, binop, c_1, c_2) = [])) {
+           doTrap()
+    }
+}
+
+def F64_BINOP() {
+     def binop = arg binop
+
+     def c_2 = pop_F64()
+     def c_1 = pop_F64()
+     def c = $binop_(nt, binop, c_1, c_2).
+     push_nt(c)
+    
+     if (($binop_(nt, binop, c_1, c_2) = [])) {
+           doTrap()
+    }
+}
+
+def I32_TESTOP() {
+     def testop = arg testop
+
+     def c_1 = pop_I32()
+     def c = $testop_(nt, testop, c_1).
+     push_I32(c)
+    
+}
+
+def U32_TESTOP() {
+     def testop = arg testop
+
+     def c_1 = pop_U32()
+     def c = $testop_(nt, testop, c_1).
+     push_I32(c)
+    
+}
+
+def F32_TESTOP() {
+     def testop = arg testop
+
+     def c_1 = pop_F32()
+     def c = $testop_(nt, testop, c_1).
+     push_I32(c)
+    
+}
+
+def I64_TESTOP() {
+     def testop = arg testop
+
+     def c_1 = pop_I64()
+     def c = $testop_(nt, testop, c_1).
+     push_I32(c)
+    
+}
+
+def U64_TESTOP() {
+     def testop = arg testop
+
+     def c_1 = pop_U64()
+     def c = $testop_(nt, testop, c_1).
+     push_I32(c)
+    
+}
+
+def F64_TESTOP() {
+     def testop = arg testop
+
+     def c_1 = pop_F64()
+     def c = $testop_(nt, testop, c_1).
+     push_I32(c)
+    
+}
+
+def I32_RELOP() {
+     def relop = arg relop
+
+     def c_2 = pop_I32()
+     def c_1 = pop_I32()
+     def c = $relop_(nt, relop, c_1, c_2).
+     push_I32(c)
+    
+}
+
+def U32_RELOP() {
+     def relop = arg relop
+
+     def c_2 = pop_U32()
+     def c_1 = pop_U32()
+     def c = $relop_(nt, relop, c_1, c_2).
+     push_I32(c)
+    
+}
+
+def F32_RELOP() {
+     def relop = arg relop
+
+     def c_2 = pop_F32()
+     def c_1 = pop_F32()
+     def c = $relop_(nt, relop, c_1, c_2).
+     push_I32(c)
+    
+}
+
+def I64_RELOP() {
+     def relop = arg relop
+
+     def c_2 = pop_I64()
+     def c_1 = pop_I64()
+     def c = $relop_(nt, relop, c_1, c_2).
+     push_I32(c)
+    
+}
+
+def U64_RELOP() {
+     def relop = arg relop
+
+     def c_2 = pop_U64()
+     def c_1 = pop_U64()
+     def c = $relop_(nt, relop, c_1, c_2).
+     push_I32(c)
+    
+}
+
+def F64_RELOP() {
+     def relop = arg relop
+
+     def c_2 = pop_F64()
+     def c_1 = pop_F64()
+     def c = $relop_(nt, relop, c_1, c_2).
+     push_I32(c)
+    
+}
+
+def CVTOP() {
+     def nt_2 = arg nt_2
+     def nt_1 = arg nt_1
+     def cvtop = arg cvtop
+
+     def c_1 = pop_none()
+     def c = $cvtop__(nt_1, nt_2, cvtop, c_1).
+     push_nt_2(c)
+    
+     if (($cvtop__(nt_1, nt_2, cvtop, c_1) = [])) {
+           doTrap()
+    }
+}
+
+def REF.I31() {
+
+     def i = pop_I32()
+     push_Value((REF.I31_NUM $wrap__(32, 31, i)))
+    
+}
+
+def REF.IS_NULL() {
+
+     def ref = pop_Value()
+     if (ref is some REF.NULL) {
+           push_I32(1)
+        }
+     else {
+           push_I32(0)
+        
+    }
+}
+
+def REF.AS_NON_NULL() {
+
+     def ref = pop_Value()
+     if (ref is some REF.NULL) {
+           doTrap()
+    }
+     push_Value(ref)
+    
+}
+
+def REF.EQ() {
+
+     def ref_2 = pop_Value()
+     def ref_1 = pop_Value()
+     if (ref_1 is some REF.NULL) {
+           if (ref_2 is some REF.NULL) {
+                 push_I32(1)
+            }
+           else if (ref_1 = ref_2) {
+                 push_I32(1)
+            
+        }
+           else {
+                 push_I32(0)
+            
+        }}
+     else if (ref_1 = ref_2) {
+           push_I32(1)
+        
+    }
+     else {
+           push_I32(0)
+        
+    }
+}
+
+def I31.GET() {
+     def sx = arg sx
+
+     def val = pop_Value()
+     if (val is some REF.NULL) {
+           doTrap()
+    }
+     def (REF.I31_NUM i) = val.
+     push_I32($extend__(31, 32, sx, i))
+    
+}
+
+def ARRAY.NEW() {
+     def x = imm_readULEB32()
+
+     def n = pop_I32()
+     def val = pop_Value()
+     push_Value(val^n)
+    
+     Execute the instruction (ARRAY.NEW_FIXED x n).
+    
+}
+
+def EXTERN.CONVERT_ANY() {
+
+     def val = pop_Value()
+     if (val is some REF.NULL) {
+           push_Value((REF.NULL EXTERN))
+        }
+     if (val is addrref) {
+           push_Value((REF.EXTERN val))
+        }
+}
+
+def ANY.CONVERT_EXTERN() {
+
+     def val = pop_Value()
+     if (val is some REF.NULL) {
+           push_Value((REF.NULL ANY))
+        }
+     if (val is some REF.EXTERN) {
+           def (REF.EXTERN addrref) = val.
+           push_Value(addrref)
+        }
+}
+
+def VVUNOP() {
+     def V128 = arg V128
+     def vvunop = arg vvunop
+
+     def c_1 = pop_V128()
+     def c = $vvunop_(V128, vvunop, c_1).
+     push_V128(c)
+    
+}
+
+def VVBINOP() {
+     def V128 = arg V128
+     def vvbinop = arg vvbinop
+
+     def c_2 = pop_V128()
+     def c_1 = pop_V128()
+     def c = $vvbinop_(V128, vvbinop, c_1, c_2).
+     push_V128(c)
+    
+}
+
+def VVTERNOP() {
+     def V128 = arg V128
+     def vvternop = arg vvternop
+
+     def c_3 = pop_V128()
+     def c_2 = pop_V128()
+     def c_1 = pop_V128()
+     def c = $vvternop_(V128, vvternop, c_1, c_2, c_3).
+     push_V128(c)
+    
+}
+
+def VVTESTOP() {
+     def V128 = arg V128
+     def ANY_TRUE = arg ANY_TRUE
+
+     def c_1 = pop_V128()
+     def c = $ine_($vsize(V128), c_1, 0).
+     push_I32(c)
+    
+}
+
+def VUNOP() {
+     def sh = arg sh
+     def vunop = arg vunop
+
+     def c_1 = pop_V128()
+     def c = $vunop_(sh, vunop, c_1).
+     push_V128(c)
+    
+     if (($vunop_(sh, vunop, c_1) = [])) {
+           doTrap()
+    }
+}
+
+def VBINOP() {
+     def sh = arg sh
+     def vbinop = arg vbinop
+
+     def c_2 = pop_V128()
+     def c_1 = pop_V128()
+     def c = $vbinop_(sh, vbinop, c_1, c_2).
+     push_V128(c)
+    
+     if (($vbinop_(sh, vbinop, c_1, c_2) = [])) {
+           doTrap()
+    }
+}
+
+def VTERNOP() {
+     def sh = arg sh
+     def vternop = arg vternop
+
+     def c_3 = pop_V128()
+     def c_2 = pop_V128()
+     def c_1 = pop_V128()
+     def c = $vternop_(sh, vternop, c_1, c_2, c_3).
+     push_V128(c)
+    
+     if (($vternop_(sh, vternop, c_1, c_2, c_3) = [])) {
+           doTrap()
+    }
+}
+
+def VTESTOP() {
+     def sh = arg sh
+     def vtestop = arg vtestop
+
+     def c_1 = pop_V128()
+     def i = $vtestop_(sh, vtestop, c_1).
+     push_I32(i)
+    
+}
+
+def VRELOP() {
+     def sh = arg sh
+     def vrelop = arg vrelop
+
+     def c_2 = pop_V128()
+     def c_1 = pop_V128()
+     def c = $vrelop_(sh, vrelop, c_1, c_2).
+     push_V128(c)
+    
+}
+
+def VSHIFTOP() {
+     def sh = arg sh
+     def vshiftop = arg vshiftop
+
+     def i = pop_I32()
+     def c_1 = pop_V128()
+     def c = $vshiftop_(sh, vshiftop, c_1, i).
+     push_V128(c)
+    
+}
+
+def VBITMASK() {
+     def sh = arg sh
+
+     def c_1 = pop_V128()
+     def c = $vbitmaskop_(sh, c_1).
+     push_I32(c)
+    
+}
+
+def VSWIZZLOP() {
+     def sh = arg sh
+     def swizzlop = arg swizzlop
+
+     def c_2 = pop_V128()
+     def c_1 = pop_V128()
+     def c = $vswizzlop_(sh, swizzlop, c_1, c_2).
+     push_V128(c)
+    
+}
+
+def VSHUFFLE() {
+     def sh = arg sh
+     def i* = arg i*
+
+     def c_2 = pop_V128()
+     def c_1 = pop_V128()
+     def c = $vshufflop_(sh, i*, c_1, c_2).
+     push_V128(c)
+    
+}
+
+def VSPLAT() {
+     def Lnn X M = arg Lnn X M
+
+     def c_1 = pop_none()
+     def c = $invlanes_(Lnn X M, $lpacknum_(Lnn, c_1)^M).
+     push_V128(c)
+    
+}
+
+def VEXTRACT_LANE() {
+     def lanetype X M = arg lanetype X M
+     def sx'? = arg sx'?
+     def i = arg i
+
+     def c_1 = pop_V128()
+     if (sx'? is not defined) {
+           Assert: Due to validation, lanetype is numtype.
+           def c_2 = $lanes_(lanetype X M, c_1)[i].
+           push_lanetype(c_2)
+        }
+     else {
+           Assert: Due to validation, lanetype is packtype.
+           def ?(sx) = sx'?.
+           def c_2 = $extend__($psize(lanetype), 32, sx, $lanes_(lanetype X M, c_1)[i]).
+           push_I32(c_2)
+        
+    }
+}
+
+def VREPLACE_LANE() {
+     def Lnn X M = arg Lnn X M
+     def i = arg i
+
+     def c_2 = pop_none()
+     def c_1 = pop_V128()
+     def c = $invlanes_(Lnn X M, $lanes_(Lnn X M, c_1) with [i] replaced by $lpacknum_(Lnn, c_2)).
+     push_V128(c)
+    
+}
+
+def VEXTUNOP() {
+     def sh_2 = arg sh_2
+     def sh_1 = arg sh_1
+     def vextunop = arg vextunop
+
+     def c_1 = pop_V128()
+     def c = $vextunop__(sh_1, sh_2, vextunop, c_1).
+     push_V128(c)
+    
+}
+
+def VEXTBINOP() {
+     def sh_2 = arg sh_2
+     def sh_1 = arg sh_1
+     def vextbinop = arg vextbinop
+
+     def c_2 = pop_V128()
+     def c_1 = pop_V128()
+     def c = $vextbinop__(sh_1, sh_2, vextbinop, c_1, c_2).
+     push_V128(c)
+    
+}
+
+def VEXTTERNOP() {
+     def sh_2 = arg sh_2
+     def sh_1 = arg sh_1
+     def vextternop = arg vextternop
+
+     def c_3 = pop_V128()
+     def c_2 = pop_V128()
+     def c_1 = pop_V128()
+     def c = $vextternop__(sh_1, sh_2, vextternop, c_1, c_2, c_3).
+     push_V128(c)
+    
+}
+
+def VNARROW() {
+     def sh_2 = arg sh_2
+     def sh_1 = arg sh_1
+     def sx = arg sx
+
+     def c_2 = pop_V128()
+     def c_1 = pop_V128()
+     def c = $vnarrowop__(sh_1, sh_2, sx, c_1, c_2).
+     push_V128(c)
+    
+}
+
+def VCVTOP() {
+     def sh_2 = arg sh_2
+     def sh_1 = arg sh_1
+     def vcvtop = arg vcvtop
+
+     def c_1 = pop_V128()
+     def c = $vcvtop__(sh_1, sh_2, vcvtop, c_1).
+     push_V128(c)
+    
+}
+
+def LOCAL.TEE() {
+     def x = imm_readULEB32()
+
+     def val = pop_Value()
+     push_Value(val)
+    
+     push_Value(val)
+    
+     Execute the instruction (LOCAL.SET x).
+    
+}
+
+def BLOCK() {
+     def bt = imm_readBlockType()
+     def instr* = arg instr*
+
+     def z = the current state.
+     def t_1^m ->_ localidx_0* t_2^n = $blocktype_(z, bt).
+     def val^m = pop_Value()
+     Enter val^m :: instr* with label (LABEL_ n { [] }).
+}
+
+def LOOP() {
+     def bt = imm_readBlockType()
+     def instr* = arg instr*
+
+     def z = the current state.
+     def t_1^m ->_ localidx_0* t_2^n = $blocktype_(z, bt).
+     def val^m = pop_Value()
+     Enter val^m :: instr* with label (LABEL_ m { [(LOOP bt instr*)] }).
+}
+
+def BR_ON_CAST() {
+     def l = imm_readULEB32()
+     def rt_1 = arg rt_1
+     def rt_2 = arg rt_2
+
+     def (FRAME_ _ { f }) = the topmost FRAME_.
+     def ref = pop_Value()
+     def rt = $Ref_ok(ref).
+     push_Value(ref)
+    
+     if (rt matches $inst_reftype(f.MODULE, rt_2)) {
+           Execute the instruction (BR l).
+        }
+     else {
+  
+    }
+}
+
+def BR_ON_CAST_FAIL() {
+     def l = imm_readULEB32()
+     def rt_1 = arg rt_1
+     def rt_2 = arg rt_2
+
+     def (FRAME_ _ { f }) = the topmost FRAME_.
+     def ref = pop_Value()
+     def rt = $Ref_ok(ref).
+     push_Value(ref)
+    
+     if (rt matches $inst_reftype(f.MODULE, rt_2)) {
+  }
+     else {
+           Execute the instruction (BR l).
+        
+    }
+}
+
+def CALL() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def a = $moduleinst(z).FUNCS[x].
+     push_Value((REF.FUNC_ADDR a))
+    
+     Execute the instruction (CALL_REF $funcinst(z)[a].TYPE).
+    
+}
+
+def CALL_REF() {
+     def yy = arg yy
+
+     def z = the current state.
+     def val' = pop_Value()
+     if (val' is some REF.NULL) {
+           doTrap()
+    }
+     def (REF.FUNC_ADDR a) = val'.
+     def fi = $funcinst(z)[a].
+     def (FUNC x local_0* instr*) = fi.CODE.
+     def (LOCAL t)* = local_0*.
+     def (FUNC t_1^n -> t_2^m) = $Expand(fi.TYPE).
+     def val^n = pop_Value()
+     def f = { LOCALS: ?(val)^n :: $default_(t)*; MODULE: fi.MODULE }.
+     push_Value((FRAME_ m { f }))
+    
+     Enter instr* with label (LABEL_ m { [] }).
+}
+
+def RETURN_CALL() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def a = $moduleinst(z).FUNCS[x].
+     push_Value((REF.FUNC_ADDR a))
+    
+     Execute the instruction (RETURN_CALL_REF $funcinst(z)[a].TYPE).
+    
+}
+
+def RETURN_CALL_REF() {
+     def yy = arg yy
+
+     def z = the current state.
+     if (the first non-value entry of the stack is a LABEL_) {
+           Pop all values val* from the top of the stack.
+           def (LABEL_ _ { _ }) = pop_Value()
+           push_Value(val*)
+        
+           Execute the instruction (RETURN_CALL_REF yy).
+        }
+     else if the first non-value entry of the stack is a HANDLER_ {
+           Pop all values val* from the top of the stack.
+           def (HANDLER_ _ { _ }) = pop_Value()
+           push_Value(val*)
+        
+           Execute the instruction (RETURN_CALL_REF yy).
+        
+    }
+     else {
+           Assert: Due to validation, the first non-value entry of the stack is a FRAME_.
+           Assert: Due to validation, a value is on the top of the stack.
+           def val'' = pop_Value()
+           if (val'' is some REF.NULL) {
+                 doTrap()
+        }
+           Assert: Due to validation, val'' is some REF.FUNC_ADDR.
+           def (REF.FUNC_ADDR a) = val''.
+           Assert: Due to validation, $Expand($funcinst(z)[a].TYPE) is some FUNC.
+           def (FUNC t_1^n -> t_2^m) = $Expand($funcinst(z)[a].TYPE).
+           Assert: Due to validation, there are at least n values on the top of the stack.
+           def val^n = pop_Value()
+           Pop all values val'* from the top of the stack.
+           def (FRAME_ _ { _ }) = pop_Value()
+           push_Value(val^n)
+        
+           push_Value((REF.FUNC_ADDR a))
+        
+           Execute the instruction (CALL_REF yy).
+        
+    }
+}
+
+def THROW_REF() {
+
+     def z = the current state.
+     def val' = pop_Value()
+     if (val' is some REF.NULL) {
+           doTrap()
+    }
+     if (val' is some REF.EXN_ADDR) {
+           def (REF.EXN_ADDR a) = val'.
+           Pop all values val* from the top of the stack.
+           if ((val* =/= [])) {
+                 push_Value((REF.EXN_ADDR a))
+            
+                 Execute the instruction THROW_REF.
+            }
+           else if the first non-value entry of the stack is a LABEL_ {
+                 def (LABEL_ _ { _ }) = pop_Value()
+                 push_Value((REF.EXN_ADDR a))
+            
+                 Execute the instruction THROW_REF.
+            
+        }
+           else if the first non-value entry of the stack is a FRAME_ {
+                 def (FRAME_ _ { _ }) = pop_Value()
+                 push_Value((REF.EXN_ADDR a))
+            
+                 Execute the instruction THROW_REF.
+            
+        }
+           else if not the first non-value entry of the stack is a HANDLER_ {
+                 Throw the exception val' as a result.
+        }
+           else {
+                 def (HANDLER_ n { catch''* }) = the topmost HANDLER_.
+                 if ((catch''* = [])) {
+                       def (HANDLER_ _ { _ }) = pop_Value()
+                       push_Value((REF.EXN_ADDR a))
+                
+                       Execute the instruction THROW_REF.
+                }
+                 else {
+                       def val* = $exninst(z)[a].FIELDS.
+                       def [catch_0] :: catch'* = catch''*.
+                       if (catch_0 is some CATCH) {
+                             def (CATCH x l) = catch_0.
+                             if (($exninst(z)[a].TAG = $tagaddr(z)[x])) {
+                                   def (HANDLER_ _ { _ }) = pop_Value()
+                                   push_Value(val*)
+                        
+                                   Execute the instruction (BR l).
+                        }
+                             else {
+                                   def [catch] :: catch'* = catch''*.
+                                   def (HANDLER_ _ { _ }) = pop_Value()
+                                   push_Value((HANDLER_ n { catch'* }))
+                        
+                                   push_Value((REF.EXN_ADDR a))
+                        
+                                   Execute the instruction THROW_REF.
+                        
+                    }}
+                       else if catch_0 is some CATCH_REF {
+                             def (CATCH_REF x l) = catch_0.
+                             if (($exninst(z)[a].TAG =/= $tagaddr(z)[x])) {
+                                   def [catch] :: catch'* = catch''*.
+                                   def (HANDLER_ _ { _ }) = pop_Value()
+                                   push_Value((HANDLER_ n { catch'* }))
+                        
+                                   push_Value((REF.EXN_ADDR a))
+                        
+                                   Execute the instruction THROW_REF.
+                        }
+                             else {
+                                   def (HANDLER_ _ { _ }) = pop_Value()
+                                   push_Value(val*)
+                        
+                                   push_Value((REF.EXN_ADDR a))
+                        
+                                   Execute the instruction (BR l).
+                        
+                    }
+                }
+                       else if catch_0 is some CATCH_ALL {
+                             def (CATCH_ALL l) = catch_0.
+                             def (HANDLER_ _ { _ }) = pop_Value()
+                             Execute the instruction (BR l).
+                    
+                }
+                       else if catch_0 is not CATCH_ALL_REF {
+                             def [catch] :: catch'* = catch''*.
+                             def (HANDLER_ _ { _ }) = pop_Value()
+                             push_Value((HANDLER_ n { catch'* }))
+                    
+                             push_Value((REF.EXN_ADDR a))
+                    
+                             Execute the instruction THROW_REF.
+                    
+                }
+                       else {
+                             def (CATCH_ALL_REF l) = catch_0.
+                             def (HANDLER_ _ { _ }) = pop_Value()
+                             push_Value((REF.EXN_ADDR a))
+                    
+                             Execute the instruction (BR l).
+                    
+                }
+            }
+        }}
+     else {
+           Assert: Due to validation, not the first non-value entry of the stack is a LABEL_.
+           Assert: Due to validation, not the first non-value entry of the stack is a FRAME_.
+           Assert: Due to validation, not the first non-value entry of the stack is a HANDLER_.
+           Throw the exception val' as a result.
+    }
+}
+
+def TRY_TABLE() {
+     def bt = imm_readBlockType()
+     def catch* = arg catch*
+     def instr* = arg instr*
+
+     def z = the current state.
+     def t_1^m ->_ localidx_0* t_2^n = $blocktype_(z, bt).
+     def val^m = pop_Value()
+     push_Value((HANDLER_ n { catch* }))
+    
+     Enter val^m :: instr* with label (LABEL_ n { [] }).
+}
+
+def REF.NULL() {
+     def (_IDX x) = arg (_IDX x)
+
+     def z = the current state.
+     push_Value((REF.NULL $type(z, x)))
+    
+}
+
+def REF.FUNC() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     push_Value((REF.FUNC_ADDR $moduleinst(z).FUNCS[x]))
+    
+}
+
+def REF.TEST() {
+     def rt = arg rt
+
+     def (FRAME_ _ { f }) = the topmost FRAME_.
+     def ref = pop_Value()
+     def rt' = $Ref_ok(ref).
+     if (rt' matches $inst_reftype(f.MODULE, rt)) {
+           push_I32(1)
+        }
+     else {
+           push_I32(0)
+        
+    }
+}
+
+def REF.CAST() {
+     def rt = arg rt
+
+     def (FRAME_ _ { f }) = the topmost FRAME_.
+     def ref = pop_Value()
+     def rt' = $Ref_ok(ref).
+     if (rt' does not match $inst_reftype(f.MODULE, rt)) {
+           doTrap()
+    }
+     push_Value(ref)
+    
+}
+
+def STRUCT.NEW_DEFAULT() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def (STRUCT list_0) = $Expand($type(z, x)).
+     def (mut zt)* = list_0.
+     def ?(val)* = $default_($unpack(zt))*.
+     push_Value(val*)
+    
+     Execute the instruction (STRUCT.NEW x).
+    
+}
+
+def STRUCT.GET() {
+     def sx? = arg sx?
+     def x = imm_readULEB32()
+     def i = arg i
+
+     def z = the current state.
+     def val = pop_Value()
+     if (val is some REF.NULL) {
+           doTrap()
+    }
+     def (REF.STRUCT_ADDR a) = val.
+     def (STRUCT list_0) = $Expand($type(z, x)).
+     def (mut zt)* = list_0.
+     push_Value($unpackfield_(zt*[i], sx?, $structinst(z)[a].FIELDS[i]))
+    
+}
+
+def ARRAY.NEW_DEFAULT() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def n = pop_I32()
+     def (ARRAY fieldtype_0) = $Expand($type(z, x)).
+     def (mut zt) = fieldtype_0.
+     def ?(val) = $default_($unpack(zt)).
+     push_Value(val^n)
+    
+     Execute the instruction (ARRAY.NEW_FIXED x n).
+    
+}
+
+def ARRAY.NEW_ELEM() {
+     def x = imm_readULEB32()
+     def y = arg y
+
+     def z = the current state.
+     def n = pop_I32()
+     def i = pop_I32()
+     if (((i + n) > |$elem(z, y).REFS|)) {
+           doTrap()
+    }
+     def ref^n = $elem(z, y).REFS[i : n].
+     push_Value(ref^n)
+    
+     Execute the instruction (ARRAY.NEW_FIXED x n).
+    
+}
+
+def ARRAY.NEW_DATA() {
+     def x = imm_readULEB32()
+     def y = arg y
+
+     def z = the current state.
+     def n = pop_I32()
+     def i = pop_I32()
+     def (ARRAY fieldtype_0) = $Expand($type(z, x)).
+     def (mut zt) = fieldtype_0.
+     if (((i + ((n * $zsize(zt)) / 8)) > |$data(z, y).BYTES|)) {
+           doTrap()
+    }
+     def byte** = $concatn__1^-1(`byte, ($zsize(zt) / 8), $data(z, y).BYTES[i : ((n * $zsize(zt)) / 8)]).
+     def c^n = $zbytes__1^-1(zt, byte*)*.
+     push_Value($const($cunpack(zt), $cunpacknum_(zt, c))^n)
+    
+     Execute the instruction (ARRAY.NEW_FIXED x n).
+    
+}
+
+def ARRAY.GET() {
+     def sx? = arg sx?
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def i = pop_I32()
+     def val = pop_Value()
+     if (val is some REF.NULL) {
+           doTrap()
+    }
+     def (REF.ARRAY_ADDR a) = val.
+     if ((i >= |$arrayinst(z)[a].FIELDS|)) {
+           doTrap()
+    }
+     def (ARRAY fieldtype_0) = $Expand($type(z, x)).
+     def (mut zt) = fieldtype_0.
+     push_Value($unpackfield_(zt, sx?, $arrayinst(z)[a].FIELDS[i]))
+    
+}
+
+def ARRAY.LEN() {
+
+     def z = the current state.
+     def val = pop_Value()
+     if (val is some REF.NULL) {
+           doTrap()
+    }
+     def (REF.ARRAY_ADDR a) = val.
+     push_I32(|$arrayinst(z)[a].FIELDS|)
+    
+}
+
+def ARRAY.FILL() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def n = pop_I32()
+     def val = pop_Value()
+     def i = pop_I32()
+     def val' = pop_Value()
+     if (val' is some REF.NULL) {
+           doTrap()
+    }
+     def (REF.ARRAY_ADDR a) = val'.
+     if (((i + n) > |$arrayinst(z)[a].FIELDS|)) {
+           doTrap()
+    }
+     if ((n = 0)) {
+  }
+     else {
+           push_Value((REF.ARRAY_ADDR a))
+        
+           push_I32(i)
+        
+           push_Value(val)
+        
+           Execute the instruction (ARRAY.SET x).
+        
+           push_Value((REF.ARRAY_ADDR a))
+        
+           push_I32((i + 1))
+        
+           push_Value(val)
+        
+           push_I32((n - 1))
+        
+           Execute the instruction (ARRAY.FILL x).
+        
+    }
+}
+
+def ARRAY.COPY() {
+     def x_1 = arg x_1
+     def x_2 = arg x_2
+
+     def z = the current state.
+     def n = pop_I32()
+     def i_2 = pop_I32()
+     def val = pop_Value()
+     def i_1 = pop_I32()
+     def val' = pop_Value()
+     if ((val' is some REF.NULL /\ val is ref)) {
+           doTrap()
+    }
+     if ((val is some REF.NULL /\ val' is ref)) {
+           doTrap()
+    }
+     if (val' is some REF.ARRAY_ADDR) {
+           def (REF.ARRAY_ADDR a_1) = val'.
+           if (val is some REF.ARRAY_ADDR) {
+                 if (((i_1 + n) > |$arrayinst(z)[a_1].FIELDS|)) {
+                       doTrap()
+            }
+                 def (REF.ARRAY_ADDR a_2) = val.
+                 if (((i_2 + n) > |$arrayinst(z)[a_2].FIELDS|)) {
+                       doTrap()
+            }
+                 if ((n = 0)) {
+      }
+                 else {
+                       Assert: Due to validation, $Expand($type(z, x_2)) is some ARRAY.
+                       def (ARRAY fieldtype_0) = $Expand($type(z, x_2)).
+                       def (mut zt_2) = fieldtype_0.
+                       def sx? = $sx(zt_2).
+                       push_Value((REF.ARRAY_ADDR a_1))
+                
+                       if ((i_1 <= i_2)) {
+                             push_I32(i_1)
+                    
+                             push_Value((REF.ARRAY_ADDR a_2))
+                    
+                             push_I32(i_2)
+                    
+                             Execute the instruction (ARRAY.GET sx? x_2).
+                    
+                             Execute the instruction (ARRAY.SET x_1).
+                    
+                             push_Value((REF.ARRAY_ADDR a_1))
+                    
+                             push_I32((i_1 + 1))
+                    
+                             push_Value((REF.ARRAY_ADDR a_2))
+                    
+                             push_I32((i_2 + 1))
+                    }
+                       else {
+                             push_I32(((i_1 + n) - 1))
+                    
+                             push_Value((REF.ARRAY_ADDR a_2))
+                    
+                             push_I32(((i_2 + n) - 1))
+                    
+                             Execute the instruction (ARRAY.GET sx? x_2).
+                    
+                             Execute the instruction (ARRAY.SET x_1).
+                    
+                             push_Value((REF.ARRAY_ADDR a_1))
+                    
+                             push_I32(i_1)
+                    
+                             push_Value((REF.ARRAY_ADDR a_2))
+                    
+                             push_I32(i_2)
+                    
+                }
+                       push_I32((n - 1))
+                
+                       Execute the instruction (ARRAY.COPY x_1 x_2).
+                
+            }}}
+}
+
+def ARRAY.INIT_ELEM() {
+     def x = imm_readULEB32()
+     def y = arg y
+
+     def z = the current state.
+     def n = pop_I32()
+     def j = pop_I32()
+     def i = pop_I32()
+     def val = pop_Value()
+     if (val is some REF.NULL) {
+           doTrap()
+    }
+     def (REF.ARRAY_ADDR a) = val.
+     if (((i + n) > |$arrayinst(z)[a].FIELDS|)) {
+           doTrap()
+    }
+     if (((j + n) > |$elem(z, y).REFS|)) {
+           doTrap()
+    }
+     if ((n = 0)) {
+  }
+     else {
+           def ref = $elem(z, y).REFS[j].
+           push_Value((REF.ARRAY_ADDR a))
+        
+           push_I32(i)
+        
+           push_Value(ref)
+        
+           Execute the instruction (ARRAY.SET x).
+        
+           push_Value((REF.ARRAY_ADDR a))
+        
+           push_I32((i + 1))
+        
+           push_I32((j + 1))
+        
+           push_I32((n - 1))
+        
+           Execute the instruction (ARRAY.INIT_ELEM x y).
+        
+    }
+}
+
+def ARRAY.INIT_DATA() {
+     def x = imm_readULEB32()
+     def y = arg y
+
+     def z = the current state.
+     def n = pop_I32()
+     def j = pop_I32()
+     def i = pop_I32()
+     def val = pop_Value()
+     if (val is some REF.NULL) {
+           doTrap()
+    }
+     def (REF.ARRAY_ADDR a) = val.
+     if (((i + n) > |$arrayinst(z)[a].FIELDS|)) {
+           doTrap()
+    }
+     if ($Expand($type(z, x)) is some ARRAY) {
+           def (ARRAY fieldtype_0) = $Expand($type(z, x)).
+           def (mut zt) = fieldtype_0.
+           if (((j + ((n * $zsize(zt)) / 8)) > |$data(z, y).BYTES|)) {
+                 doTrap()
+        }
+           if ((n = 0)) {
+    }
+           else {
+                 def c = $zbytes__1^-1(zt, $data(z, y).BYTES[j : ($zsize(zt) / 8)]).
+                 push_Value((REF.ARRAY_ADDR a))
+            
+                 push_I32(i)
+            
+                 push_Value($const($cunpack(zt), $cunpacknum_(zt, c)))
+            
+                 Execute the instruction (ARRAY.SET x).
+            
+                 push_Value((REF.ARRAY_ADDR a))
+            
+                 push_I32((i + 1))
+            
+                 push_I32((j + ($zsize(zt) / 8)))
+            
+                 push_I32((n - 1))
+            
+                 Execute the instruction (ARRAY.INIT_DATA x y).
+            
+        }}
+     else {
+           Assert: Due to validation, (n = 0).
+  
+    }
+}
+
+def LOCAL.GET() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def ?(val) = getLocal(z, x).
+     push_Value(val)
+    
+}
+
+def GLOBAL.GET() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def val = getGlobal(z, x).VALUE.
+     push_Value(val)
+    
+}
+
+def TABLE.GET() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def i = pop_at()
+     if ((i >= |$table(z, x).REFS|)) {
+           doTrap()
+    }
+     push_Value($table(z, x).REFS[i])
+    
+}
+
+def TABLE.SIZE() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def (at lim rt) = $table(z, x).TYPE.
+     def n = |$table(z, x).REFS|.
+     push_at(n)
+    
+}
+
+def TABLE.FILL() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def n = pop_at()
+     def val = pop_Value()
+     def i = pop_none()
+     if (((i + n) > |$table(z, x).REFS|)) {
+           doTrap()
+    }
+     if ((n = 0)) {
+  }
+     else {
+           push_at(i)
+        
+           push_Value(val)
+        
+           Execute the instruction (TABLE.SET x).
+        
+           push_at((i + 1))
+        
+           push_Value(val)
+        
+           push_at((n - 1))
+        
+           Execute the instruction (TABLE.FILL x).
+        
+    }
+}
+
+def TABLE.COPY() {
+     def x_1 = arg x_1
+     def x_2 = arg x_2
+
+     def z = the current state.
+     def n = pop_at()
+     def i_2 = pop_at_2()
+     def i_1 = pop_at_1()
+     if (((i_1 + n) > |$table(z, x_1).REFS|)) {
+           doTrap()
+    }
+     if (((i_2 + n) > |$table(z, x_2).REFS|)) {
+           doTrap()
+    }
+     if ((n = 0)) {
+  }
+     else {
+           if ((i_1 <= i_2)) {
+                 push_at_1(i_1)
+            
+                 push_at_2(i_2)
+            
+                 Execute the instruction (TABLE.GET x_2).
+            
+                 Execute the instruction (TABLE.SET x_1).
+            
+                 push_at_1((i_1 + 1))
+            
+                 push_at_2((i_2 + 1))
+            }
+           else {
+                 push_at_1(((i_1 + n) - 1))
+            
+                 push_at_2(((i_2 + n) - 1))
+            
+                 Execute the instruction (TABLE.GET x_2).
+            
+                 Execute the instruction (TABLE.SET x_1).
+            
+                 push_at_1(i_1)
+            
+                 push_at_2(i_2)
+            
+        }
+           push_at((n - 1))
+        
+           Execute the instruction (TABLE.COPY x_1 x_2).
+        
+    }
+}
+
+def TABLE.INIT() {
+     def x = imm_readULEB32()
+     def y = arg y
+
+     def z = the current state.
+     def n = pop_I32()
+     def j = pop_I32()
+     def i = pop_at()
+     if (((i + n) > |$table(z, x).REFS|)) {
+           doTrap()
+    }
+     if (((j + n) > |$elem(z, y).REFS|)) {
+           doTrap()
+    }
+     if ((n = 0)) {
+  }
+     else {
+           push_at(i)
+        
+           push_Value($elem(z, y).REFS[j])
+        
+           Execute the instruction (TABLE.SET x).
+        
+           push_at((i + 1))
+        
+           push_I32((j + 1))
+        
+           push_I32((n - 1))
+        
+           Execute the instruction (TABLE.INIT x y).
+        
+    }
+}
+
+def I32_LOAD() {
+     def loadop_? = arg loadop_?
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def i = pop_at()
+     if (loadop_? is not defined) {
+           if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def c = $nbytes__1^-1(nt, $mem(z, x).BYTES[(i + ao.OFFSET) : ($size(nt) / 8)]).
+           push_nt(c)
+        }
+     else {
+           Assert: Due to validation, nt is Inn.
+           def ?(loadop__0) = loadop_?.
+           def n _ sx = loadop__0.
+           if ((((i + ao.OFFSET) + (n / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def c = $ibytes__1^-1(n, $mem(z, x).BYTES[(i + ao.OFFSET) : (n / 8)]).
+           push_nt($extend__(n, $size(nt), sx, c))
+        
+    }
+}
+
+def U32_LOAD() {
+     def loadop_? = arg loadop_?
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def i = pop_at()
+     if (loadop_? is not defined) {
+           if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def c = $nbytes__1^-1(nt, $mem(z, x).BYTES[(i + ao.OFFSET) : ($size(nt) / 8)]).
+           push_nt(c)
+        }
+     else {
+           Assert: Due to validation, nt is Inn.
+           def ?(loadop__0) = loadop_?.
+           def n _ sx = loadop__0.
+           if ((((i + ao.OFFSET) + (n / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def c = $ibytes__1^-1(n, $mem(z, x).BYTES[(i + ao.OFFSET) : (n / 8)]).
+           push_nt($extend__(n, $size(nt), sx, c))
+        
+    }
+}
+
+def F32_LOAD() {
+     def loadop_? = arg loadop_?
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def i = pop_at()
+     if (loadop_? is not defined) {
+           if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def c = $nbytes__1^-1(nt, $mem(z, x).BYTES[(i + ao.OFFSET) : ($size(nt) / 8)]).
+           push_nt(c)
+        }
+     else {
+           Assert: Due to validation, nt is Inn.
+           def ?(loadop__0) = loadop_?.
+           def n _ sx = loadop__0.
+           if ((((i + ao.OFFSET) + (n / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def c = $ibytes__1^-1(n, $mem(z, x).BYTES[(i + ao.OFFSET) : (n / 8)]).
+           push_nt($extend__(n, $size(nt), sx, c))
+        
+    }
+}
+
+def I64_LOAD() {
+     def loadop_? = arg loadop_?
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def i = pop_at()
+     if (loadop_? is not defined) {
+           if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def c = $nbytes__1^-1(nt, $mem(z, x).BYTES[(i + ao.OFFSET) : ($size(nt) / 8)]).
+           push_nt(c)
+        }
+     else {
+           Assert: Due to validation, nt is Inn.
+           def ?(loadop__0) = loadop_?.
+           def n _ sx = loadop__0.
+           if ((((i + ao.OFFSET) + (n / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def c = $ibytes__1^-1(n, $mem(z, x).BYTES[(i + ao.OFFSET) : (n / 8)]).
+           push_nt($extend__(n, $size(nt), sx, c))
+        
+    }
+}
+
+def U64_LOAD() {
+     def loadop_? = arg loadop_?
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def i = pop_at()
+     if (loadop_? is not defined) {
+           if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def c = $nbytes__1^-1(nt, $mem(z, x).BYTES[(i + ao.OFFSET) : ($size(nt) / 8)]).
+           push_nt(c)
+        }
+     else {
+           Assert: Due to validation, nt is Inn.
+           def ?(loadop__0) = loadop_?.
+           def n _ sx = loadop__0.
+           if ((((i + ao.OFFSET) + (n / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def c = $ibytes__1^-1(n, $mem(z, x).BYTES[(i + ao.OFFSET) : (n / 8)]).
+           push_nt($extend__(n, $size(nt), sx, c))
+        
+    }
+}
+
+def F64_LOAD() {
+     def loadop_? = arg loadop_?
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def i = pop_at()
+     if (loadop_? is not defined) {
+           if ((((i + ao.OFFSET) + ($size(nt) / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def c = $nbytes__1^-1(nt, $mem(z, x).BYTES[(i + ao.OFFSET) : ($size(nt) / 8)]).
+           push_nt(c)
+        }
+     else {
+           Assert: Due to validation, nt is Inn.
+           def ?(loadop__0) = loadop_?.
+           def n _ sx = loadop__0.
+           if ((((i + ao.OFFSET) + (n / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def c = $ibytes__1^-1(n, $mem(z, x).BYTES[(i + ao.OFFSET) : (n / 8)]).
+           push_nt($extend__(n, $size(nt), sx, c))
+        
+    }
+}
+
+def VLOAD() {
+     def V128 = arg V128
+     def vloadop_? = arg vloadop_?
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def i = pop_at()
+     if (vloadop_? is not defined) {
+           if ((((i + ao.OFFSET) + ($vsize(V128) / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def c = $vbytes__1^-1(V128, $mem(z, x).BYTES[(i + ao.OFFSET) : ($vsize(V128) / 8)]).
+           push_V128(c)
+        }
+     else {
+           def ?(vloadop__0) = vloadop_?.
+           if (vloadop__0 is some SHAPE) {
+                 def (SHAPE M X K _ sx) = vloadop__0.
+                 if ((((i + ao.OFFSET) + ((M * K) / 8)) > |$mem(z, x).BYTES|)) {
+                       doTrap()
+            }
+                 def j^K = $ibytes__1^-1(M, $mem(z, x).BYTES[((i + ao.OFFSET) + ((k * M) / 8)) : (M / 8)])^(k<K).
+                 if ($lsizenn^-1((M * 2)) is Jnn) {
+                       def Jnn = $lsizenn^-1((M * 2)).
+                       def c = $invlanes_(Jnn X K, $extend__(M, $lsizenn(Jnn), sx, j)^K).
+                       push_V128(c)
+                }}
+           if (vloadop__0 is some SPLAT) {
+                 def (SPLAT N) = vloadop__0.
+                 if ((((i + ao.OFFSET) + (N / 8)) > |$mem(z, x).BYTES|)) {
+                       doTrap()
+            }
+                 def M = (128 / N).
+                 if ($lsize^-1(N) is Jnn) {
+                       def Jnn = $lsize^-1(N).
+                       def j = $ibytes__1^-1(N, $mem(z, x).BYTES[(i + ao.OFFSET) : (N / 8)]).
+                       def c = $invlanes_(Jnn X M, j^M).
+                       push_V128(c)
+                }}
+           if (vloadop__0 is some ZERO) {
+                 def (ZERO N) = vloadop__0.
+                 if ((((i + ao.OFFSET) + (N / 8)) > |$mem(z, x).BYTES|)) {
+                       doTrap()
+            }
+                 def j = $ibytes__1^-1(N, $mem(z, x).BYTES[(i + ao.OFFSET) : (N / 8)]).
+                 def c = $extend__(N, 128, U, j).
+                 push_V128(c)
+            }
+    }
+}
+
+def VLOAD_LANE() {
+     def V128 = arg V128
+     def N = arg N
+     def x = imm_readULEB32()
+     def ao = arg ao
+     def j = arg j
+
+     def z = the current state.
+     def c_1 = pop_V128()
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + (N / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def M = ($vsize(V128) / N).
+     def Jnn = $lsize^-1(N).
+     def k = $ibytes__1^-1(N, $mem(z, x).BYTES[(i + ao.OFFSET) : (N / 8)]).
+     def c = $invlanes_(Jnn X M, $lanes_(Jnn X M, c_1) with [j] replaced by k).
+     push_V128(c)
+    
+}
+
+def MEMORY.SIZE() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def at lim PAGE = $mem(z, x).TYPE.
+     def (n * (64 * $Ki())) = |$mem(z, x).BYTES|.
+     push_at(n)
+    
+}
+
+def MEMORY.FILL() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def n = pop_at()
+     def val = pop_Value()
+     def i = pop_none()
+     if (((i + n) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     if ((n = 0)) {
+  }
+     else {
+           push_at(i)
+        
+           push_Value(val)
+        
+           Execute the instruction (STORE I32 ?(8) x $memarg0()).
+        
+           push_at((i + 1))
+        
+           push_Value(val)
+        
+           push_at((n - 1))
+        
+           Execute the instruction (MEMORY.FILL x).
+        
+    }
+}
+
+def MEMORY.COPY() {
+     def x_1 = arg x_1
+     def x_2 = arg x_2
+
+     def z = the current state.
+     def n = pop_at()
+     def i_2 = pop_at_2()
+     def i_1 = pop_at_1()
+     if (((i_1 + n) > |$mem(z, x_1).BYTES|)) {
+           doTrap()
+    }
+     if (((i_2 + n) > |$mem(z, x_2).BYTES|)) {
+           doTrap()
+    }
+     if ((n = 0)) {
+  }
+     else {
+           if ((i_1 <= i_2)) {
+                 push_at_1(i_1)
+            
+                 push_at_2(i_2)
+            
+                 Execute the instruction (LOAD I32 ?(8 _ U) x_2 $memarg0()).
+            
+                 Execute the instruction (STORE I32 ?(8) x_1 $memarg0()).
+            
+                 push_at_1((i_1 + 1))
+            
+                 push_at_2((i_2 + 1))
+            }
+           else {
+                 push_at_1(((i_1 + n) - 1))
+            
+                 push_at_2(((i_2 + n) - 1))
+            
+                 Execute the instruction (LOAD I32 ?(8 _ U) x_2 $memarg0()).
+            
+                 Execute the instruction (STORE I32 ?(8) x_1 $memarg0()).
+            
+                 push_at_1(i_1)
+            
+                 push_at_2(i_2)
+            
+        }
+           push_at((n - 1))
+        
+           Execute the instruction (MEMORY.COPY x_1 x_2).
+        
+    }
+}
+
+def MEMORY.INIT() {
+     def x = imm_readULEB32()
+     def y = arg y
+
+     def z = the current state.
+     def n = pop_I32()
+     def j = pop_I32()
+     def i = pop_at()
+     if (((i + n) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     if (((j + n) > |$data(z, y).BYTES|)) {
+           doTrap()
+    }
+     if ((n = 0)) {
+  }
+     else {
+           push_at(i)
+        
+           push_I32($data(z, y).BYTES[j])
+        
+           Execute the instruction (STORE I32 ?(8) x $memarg0()).
+        
+           push_at((i + 1))
+        
+           push_I32((j + 1))
+        
+           push_I32((n - 1))
+        
+           Execute the instruction (MEMORY.INIT x y).
+        
+    }
+}
+
+def THROW() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def (FUNC t^n -> resulttype_0) = $Expand($as_deftype($tag(z, x).TYPE)).
+     def a = |$exninst(z)|.
+     def val^n = pop_Value()
+     def exn = { TAG: $tagaddr(z)[x]; FIELDS: val^n }.
+     $add_exninst(z, [exn])
+     push_Value((REF.EXN_ADDR a))
+    
+     Execute the instruction THROW_REF.
+    
+}
+
+def STRUCT.NEW() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def (STRUCT list_0) = $Expand($type(z, x)).
+     def (mut zt)^n = list_0.
+     def a = |$structinst(z)|.
+     def val^n = pop_Value()
+     def si = { TYPE: $type(z, x); FIELDS: $packfield_(zt, val)^n }.
+     push_Value((REF.STRUCT_ADDR a))
+    
+     $add_structinst(z, [si])
+}
+
+def STRUCT.SET() {
+     def x = imm_readULEB32()
+     def i = arg i
+
+     def z = the current state.
+     def val = pop_Value()
+     def val' = pop_Value()
+     if (val' is some REF.NULL) {
+           doTrap()
+    }
+     def (REF.STRUCT_ADDR a) = val'.
+     def (STRUCT list_0) = $Expand($type(z, x)).
+     def (mut zt)* = list_0.
+     $with_struct(z, a, i, $packfield_(zt*[i], val))
+}
+
+def ARRAY.NEW_FIXED() {
+     def x = imm_readULEB32()
+     def n = arg n
+
+     def z = the current state.
+     def (ARRAY fieldtype_0) = $Expand($type(z, x)).
+     def (mut zt) = fieldtype_0.
+     def a = |$arrayinst(z)|.
+     def val^n = pop_Value()
+     def ai = { TYPE: $type(z, x); FIELDS: $packfield_(zt, val)^n }.
+     push_Value((REF.ARRAY_ADDR a))
+    
+     $add_arrayinst(z, [ai])
+}
+
+def ARRAY.SET() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def val = pop_Value()
+     def i = pop_I32()
+     def val' = pop_Value()
+     if (val' is some REF.NULL) {
+           doTrap()
+    }
+     def (REF.ARRAY_ADDR a) = val'.
+     if ((i >= |$arrayinst(z)[a].FIELDS|)) {
+           doTrap()
+    }
+     def (ARRAY fieldtype_0) = $Expand($type(z, x)).
+     def (mut zt) = fieldtype_0.
+     $with_array(z, a, i, $packfield_(zt, val))
+}
+
+def LOCAL.SET() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def val = pop_Value()
+     setLocal(z, x, val)
+}
+
+def GLOBAL.SET() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def val = pop_Value()
+     setGlobal(z, x, val)
+}
+
+def TABLE.SET() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def ref = pop_Value()
+     def i = pop_at()
+     if ((i >= |$table(z, x).REFS|)) {
+           doTrap()
+    }
+     $with_table(z, x, i, ref)
+}
+
+def TABLE.GROW() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def n = pop_at()
+     def ref = pop_Value()
+     Either:
+           def ti = $growtable($table(z, x), n, ref).
+           push_at(|$table(z, x).REFS|)
+        
+           $with_tableinst(z, x, ti)
+     Or:
+           push_at($invsigned_($size(at), (- 1)))
+        
+}
+
+def ELEM.DROP() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     $with_elem(z, x, [])
+}
+
+def I32_STORE() {
+     def storeop_? = arg storeop_?
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def c = pop_nt'()
+     def i = pop_at()
+     if (storeop_? is not defined) {
+           if ((((i + ao.OFFSET) + ($size(nt') / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def b* = $nbytes_(nt', c).
+           $with_mem(z, x, (i + ao.OFFSET), ($size(nt') / 8), b*)}
+     else {
+           Assert: Due to validation, nt' is Inn.
+           def ?(n) = storeop_?.
+           if ((((i + ao.OFFSET) + (n / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def b* = $ibytes_(n, $wrap__($size(nt'), n, c)).
+           $with_mem(z, x, (i + ao.OFFSET), (n / 8), b*)
+    }
+}
+
+def U32_STORE() {
+     def storeop_? = arg storeop_?
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def c = pop_nt'()
+     def i = pop_at()
+     if (storeop_? is not defined) {
+           if ((((i + ao.OFFSET) + ($size(nt') / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def b* = $nbytes_(nt', c).
+           $with_mem(z, x, (i + ao.OFFSET), ($size(nt') / 8), b*)}
+     else {
+           Assert: Due to validation, nt' is Inn.
+           def ?(n) = storeop_?.
+           if ((((i + ao.OFFSET) + (n / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def b* = $ibytes_(n, $wrap__($size(nt'), n, c)).
+           $with_mem(z, x, (i + ao.OFFSET), (n / 8), b*)
+    }
+}
+
+def F32_STORE() {
+     def storeop_? = arg storeop_?
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def c = pop_nt'()
+     def i = pop_at()
+     if (storeop_? is not defined) {
+           if ((((i + ao.OFFSET) + ($size(nt') / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def b* = $nbytes_(nt', c).
+           $with_mem(z, x, (i + ao.OFFSET), ($size(nt') / 8), b*)}
+     else {
+           Assert: Due to validation, nt' is Inn.
+           def ?(n) = storeop_?.
+           if ((((i + ao.OFFSET) + (n / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def b* = $ibytes_(n, $wrap__($size(nt'), n, c)).
+           $with_mem(z, x, (i + ao.OFFSET), (n / 8), b*)
+    }
+}
+
+def I64_STORE() {
+     def storeop_? = arg storeop_?
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def c = pop_nt'()
+     def i = pop_at()
+     if (storeop_? is not defined) {
+           if ((((i + ao.OFFSET) + ($size(nt') / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def b* = $nbytes_(nt', c).
+           $with_mem(z, x, (i + ao.OFFSET), ($size(nt') / 8), b*)}
+     else {
+           Assert: Due to validation, nt' is Inn.
+           def ?(n) = storeop_?.
+           if ((((i + ao.OFFSET) + (n / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def b* = $ibytes_(n, $wrap__($size(nt'), n, c)).
+           $with_mem(z, x, (i + ao.OFFSET), (n / 8), b*)
+    }
+}
+
+def U64_STORE() {
+     def storeop_? = arg storeop_?
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def c = pop_nt'()
+     def i = pop_at()
+     if (storeop_? is not defined) {
+           if ((((i + ao.OFFSET) + ($size(nt') / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def b* = $nbytes_(nt', c).
+           $with_mem(z, x, (i + ao.OFFSET), ($size(nt') / 8), b*)}
+     else {
+           Assert: Due to validation, nt' is Inn.
+           def ?(n) = storeop_?.
+           if ((((i + ao.OFFSET) + (n / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def b* = $ibytes_(n, $wrap__($size(nt'), n, c)).
+           $with_mem(z, x, (i + ao.OFFSET), (n / 8), b*)
+    }
+}
+
+def F64_STORE() {
+     def storeop_? = arg storeop_?
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def c = pop_nt'()
+     def i = pop_at()
+     if (storeop_? is not defined) {
+           if ((((i + ao.OFFSET) + ($size(nt') / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def b* = $nbytes_(nt', c).
+           $with_mem(z, x, (i + ao.OFFSET), ($size(nt') / 8), b*)}
+     else {
+           Assert: Due to validation, nt' is Inn.
+           def ?(n) = storeop_?.
+           if ((((i + ao.OFFSET) + (n / 8)) > |$mem(z, x).BYTES|)) {
+                 doTrap()
+        }
+           def b* = $ibytes_(n, $wrap__($size(nt'), n, c)).
+           $with_mem(z, x, (i + ao.OFFSET), (n / 8), b*)
+    }
+}
+
+def VSTORE() {
+     def V128 = arg V128
+     def x = imm_readULEB32()
+     def ao = arg ao
+
+     def z = the current state.
+     def c = pop_V128()
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + ($vsize(V128) / 8)) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def b* = $vbytes_(V128, c).
+     $with_mem(z, x, (i + ao.OFFSET), ($vsize(V128) / 8), b*)
+}
+
+def VSTORE_LANE() {
+     def V128 = arg V128
+     def N = arg N
+     def x = imm_readULEB32()
+     def ao = arg ao
+     def j = arg j
+
+     def z = the current state.
+     def c = pop_V128()
+     def i = pop_at()
+     if ((((i + ao.OFFSET) + N) > |$mem(z, x).BYTES|)) {
+           doTrap()
+    }
+     def M = (128 / N).
+     def Jnn = $lsize^-1(N).
+     def b* = $ibytes_(N, $lanes_(Jnn X M, c)[j]).
+     $with_mem(z, x, (i + ao.OFFSET), (N / 8), b*)
+}
+
+def MEMORY.GROW() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     def n = pop_at()
+     Either:
+           def mi = $growmem($mem(z, x), n).
+           push_at((|$mem(z, x).BYTES| / (64 * $Ki())))
+        
+           $with_meminst(z, x, mi)
+     Or:
+           push_at($invsigned_($size(at), (- 1)))
+        
+}
+
+def DATA.DROP() {
+     def x = imm_readULEB32()
+
+     def z = the current state.
+     $with_data(z, x, [])
+}
+
+def EVAL_EXPR() {
+     def instr* = arg instr*
+
+     Execute the sequence instr*.
+     def val = pop_Value()
+     Return [val].
+}
+
